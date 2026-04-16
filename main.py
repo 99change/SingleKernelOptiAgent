@@ -206,8 +206,9 @@ def main():
     if not LLM_CONFIG.api_key:
         print(
             "Error: No API key found.\n"
-            "  Set OPENAI_API_KEY environment variable, or\n"
-            "  Set GITHUB_TOKEN if using GitHub Copilot (provider=github_copilot)",
+            "  OpenAI:         export OPENAI_API_KEY=sk-xxx\n"
+            "  GitHub Copilot: export GITHUB_TOKEN=ghp_xxx  (provider=github_copilot)\n"
+            "  Qwen:           export DASHSCOPE_API_KEY=sk-xxx  (provider=qwen)",
             file=sys.stderr,
         )
         sys.exit(1)

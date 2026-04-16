@@ -20,8 +20,13 @@ class LLMConfig:
                 self.api_key = os.environ.get("OPENAI_API_KEY", "")
             elif self.provider == "github_copilot":
                 self.api_key = os.environ.get("GITHUB_TOKEN", "")
-        if not self.base_url and self.provider == "github_copilot":
-            self.base_url = "https://api.githubcopilot.com"
+            elif self.provider == "qwen":
+                self.api_key = os.environ.get("DASHSCOPE_API_KEY", "")
+        if not self.base_url:
+            if self.provider == "github_copilot":
+                self.base_url = "https://api.githubcopilot.com"
+            elif self.provider == "qwen":
+                self.base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
 
 @dataclass
