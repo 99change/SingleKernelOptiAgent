@@ -79,10 +79,8 @@ class BaseAgent:
     # ─────────────────────────────────────────
 
     def _build_client(self, cfg: LLMConfig) -> OpenAI:
-        kwargs = {"api_key": cfg.api_key}
-        if cfg.base_url:
-            kwargs["base_url"] = cfg.base_url
-        return OpenAI(**kwargs)
+        from core.config import DASHSCOPE_BASE_URL
+        return OpenAI(api_key=cfg.api_key, base_url=DASHSCOPE_BASE_URL)
 
     def _parse_json(self, text: str) -> Any:
         """从 LLM 输出中提取 JSON，兼容带 ```json 代码块的情况"""

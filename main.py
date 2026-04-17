@@ -4,14 +4,12 @@ GPU Kernel 优化 Agent 主入口
 
 用法：
     python main.py --input examples/vector_add.cu
-    python main.py --input examples/vector_add.cu --provider qwen --model qwen-max
+    python main.py --input examples/vector_add.cu --model qwen3.5-flash-2026-02-23
     python main.py --input examples/vector_add.cu --mock     # 无 GPU 时使用 mock 模式
     python main.py --input examples/vector_add.cu --rounds 3 # 限制优化轮数
-    
+
 环境变量：
-    export OPENAI_API_KEY=sk-xxx                             # OpenAI
-    export DASHSCOPE_API_KEY=sk-xxx                          # Qwen (阿里云)
-    export GITHUB_TOKEN=ghp_xxx                              # GitHub Copilot
+    export DASHSCOPE_API_KEY=sk-xxx
 """
 
 import os
@@ -123,13 +121,48 @@ def run(kernel_code: str, mock: bool = False, max_rounds: int = 5, llm_config: L
     return report
 
 
+def _build_change_comment(report: OptimizationReport) -> str:
+    """生成写在优化文件开头的修改说明注释块"""
+    from datetime import datetime
+    lines = [
+        "/*",
+        " * ================================================================",
+        " *  KernelOptiAgent - Optimization Summary",
+        f" *  Generated : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        " * ================================================================",
+        " *",
+        f" *  Baseline time  : {report.baseline_time_ms:.3f} ms",
+        f" *  Optimized time : {report.optimized_time_ms:.3f} ms",
+        f" *  Total speedup  : {report.speedup * 100:.1f}%",
+        " *",
+        " *  Bottlenecks identified:",
+    ]
+    for b in report.analysis.bottlenecks:
+        lines.append(f" *    - {b}")
+    lines.append(" *")
+    lines.append(" *  Changes applied:")
+    if report.strategies_applied:
+        for i, s in enumerate(report.strategies_applied, 1):
+            lines.append(f" *    [{i}] {s}")
+    else:
+        lines.append(" *    (no strategy improved performance above threshold)")
+    lines += [
+        " *",
+        " * ================================================================",
+        " */",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def save_report(report: OptimizationReport, output_dir: str):
     """将报告和优化结果写入文件"""
     os.makedirs(output_dir, exist_ok=True)
 
-    # 1. 优化后的 kernel
+    # 1. 优化后的 kernel（开头附带修改说明注释）
     kernel_path = os.path.join(output_dir, "optimized_kernel.cu")
     with open(kernel_path, "w") as f:
+        f.write(_build_change_comment(report))
         f.write(report.optimized_kernel)
 
     # 2. 文本报告
@@ -180,15 +213,9 @@ def parse_args():
         help="Max optimization rounds (default: 5)",
     )
     parser.add_argument(
-        "--provider",
-        default="openai",
-        choices=["openai", "github_copilot", "qwen"],
-        help="LLM provider (default: openai)",
-    )
-    parser.add_argument(
         "--model",
         default=None,
-        help="LLM model name (default: from config)",
+        help="Qwen model name (default: qwen-max)",
     )
     parser.add_argument(
         "--verbose", "-v",
@@ -214,29 +241,21 @@ def main():
         print("Error: Input file is empty.", file=sys.stderr)
         sys.exit(1)
 
-    # 根据 provider 和 model 创建新的 LLM 配置
-    llm_config = LLMConfig(
-        provider=args.provider,
-        model=args.model or LLM_CONFIG.model,  # 用参数或默认值
-    )
+    llm_config = LLMConfig(model=args.model or LLM_CONFIG.model)
 
-    # 检查 API key
     if not llm_config.api_key:
         print(
-            "Error: No API key found.\n"
-            "  OpenAI:         export OPENAI_API_KEY=sk-xxx\n"
-            "  GitHub Copilot: export GITHUB_TOKEN=ghp_xxx  (provider=github_copilot)\n"
-            "  Qwen:           export DASHSCOPE_API_KEY=sk-xxx  (provider=qwen)",
+            "Error: DASHSCOPE_API_KEY not set.\n"
+            "  export DASHSCOPE_API_KEY=sk-xxx",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    print(f"\nInput    : {args.input}")
-    print(f"Output   : {args.output}")
-    print(f"Provider : {llm_config.provider}")
-    print(f"Model    : {llm_config.model}")
-    print(f"Mock     : {args.mock}")
-    print(f"Rounds   : {args.rounds}")
+    print(f"\nInput  : {args.input}")
+    print(f"Output : {args.output}")
+    print(f"Model  : {llm_config.model}")
+    print(f"Mock   : {args.mock}")
+    print(f"Rounds : {args.rounds}")
 
     # 运行优化
     report = run(

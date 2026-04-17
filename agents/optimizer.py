@@ -9,6 +9,7 @@ from core.models import OptimizationResult, OptimizationHistory
 from core.config import LLM_CONFIG, SYS_CONFIG
 from agents.base import BaseAgent
 from tools.kernel_tools import compile_and_test, mock_profile
+from tools.knowledge_retrieval import retrieve as retrieve_knowledge
 
 
 class OptimizerAgent(BaseAgent):
@@ -116,12 +117,25 @@ class OptimizerAgent(BaseAgent):
     # ─────────────────────────────────────────
 
     def _generate_optimized_code(self, kernel_code: str, strategy: str) -> str:
+        # 从知识库检索相关示例
+        example_code = retrieve_knowledge(strategy)
+        knowledge_section = ""
+        if example_code:
+            knowledge_section = f"""
+## Reference Example (correct CUDA implementation pattern):
+```cuda
+{example_code}
+```
+Study the above example carefully, especially the correct API usage and syntax.
+
+"""
+
         prompt = f"""
 You are a CUDA expert. Apply the following optimization to the CUDA kernel below.
 
 ## Optimization Strategy:
 {strategy}
-
+{knowledge_section}
 ## Original Kernel:
 ```cuda
 {kernel_code}
@@ -133,6 +147,7 @@ You are a CUDA expert. Apply the following optimization to the CUDA kernel below
 - Return ONLY the complete optimized .cu source code, no explanation
 - The code must be compilable with nvcc
 - Include necessary headers (#include <cuda_runtime.h> etc.)
+- Follow the exact syntax patterns shown in the reference example above
 
 Return just the raw code, no markdown fences.
 """

@@ -106,7 +106,7 @@ def estimate_parallelism(code: str) -> dict:
 # 编译工具
 # ─────────────────────────────────────────────
 
-def compile_cuda(code: str, gpu_arch: str = "sm_80") -> CompileResult:
+def compile_cuda(code: str, gpu_arch: str = "sm_120") -> CompileResult:
     """
     用 nvcc 编译 CUDA kernel 代码。
     code 应包含完整的可编译 .cu 文件内容。
@@ -167,7 +167,7 @@ def compile_cuda(code: str, gpu_arch: str = "sm_80") -> CompileResult:
         )
 
 
-def compile_and_test(code: str, gpu_arch: str = "sm_80") -> TestResult:
+def compile_and_test(code: str, gpu_arch: str = "sm_120") -> TestResult:
     """编译 + 运行 + 返回时间"""
     compile_result = compile_cuda(code, gpu_arch)
     if not compile_result.success:
