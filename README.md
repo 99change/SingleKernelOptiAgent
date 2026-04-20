@@ -1,4 +1,4 @@
-# KernelOptiAgent
+# KernelOptiAgent（已完成）
 
 自动优化 CUDA kernel 的 3-Agent 系统。输入 naive kernel，输出带注释的优化版本。
 
@@ -17,16 +17,18 @@ KernelOptiAgent/
 │   ├── kernel_tools.py      # nvcc 编译 + GPU 测评
 │   └── knowledge_retrieval.py  # strategy → 示例代码检索
 ├── knowledge/               # CUDA 优化模式示例库
-│   ├── float4_vectorized.cu
-│   ├── shared_memory_tiling.cu
-│   ├── loop_unrolling.cu
-│   ├── occupancy_tuning.cu
-│   └── restrict_qualifiers.cu
+│   ├── float4_vectorized.cu     # float4 向量化 + __ldg 正确用法
+│   ├── latency_hiding.cu        # 延迟隐藏：__ldg / ILP / 软件流水线
+│   ├── shared_memory_tiling.cu  # Tiled matmul / shared memory 数据复用
+│   ├── loop_unrolling.cu        # #pragma unroll
+│   ├── occupancy_tuning.cu      # __launch_bounds__ / block size 调优
+│   └── restrict_qualifiers.cu   # __restrict__ 指针别名消除
 ├── core/
 │   ├── models.py            # 数据模型（含 BottleneckIR）
 │   ├── config.py            # LLM 配置（Qwen / Dashscope）
 │   └── memory.py
 ├── main.py                  # 主入口
+├── baseline_e2e.py/         # 端到端对比
 └── results/                 # 输出目录
 ```
 
@@ -119,4 +121,26 @@ python main.py --input your_kernel.cu --model qwen-max --rounds 5
 
 **Profile 数据反馈**：将 ProfilerAgent 的 bandwidth/occupancy 等指标传入 OptimizerAgent prompt，基于具体数字选策略而非静态分析。
 
+## Phase 2（关键跃迁）
+
+* 收集数据：
+
+  * (Nsight → bottleneck)
+* 训练 classifier（替代 LLM）
+
+👉 到这里你就已经超过大多数工作了
+
+---
+
+## Phase 3（真正研究点）
+
+* bottleneck → optimization policy
+* 或：
+* bottleneck → search space reduction
+
+---
+
+# 六、你这个方案的本质创新点（如果你做出来）
+
+> **“构建了 hardware-aware structured feedback representation”**
 

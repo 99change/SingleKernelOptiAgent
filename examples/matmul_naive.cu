@@ -12,9 +12,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define M 512
-#define K 512
-#define N 512
+#define M 4096
+#define K 4096
+#define N 4096
 
 // 最朴素的矩阵乘法 kernel
 __global__ void matmul_naive(float *A, float *B, float *C, int m, int k, int n) {

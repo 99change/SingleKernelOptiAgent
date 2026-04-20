@@ -106,9 +106,14 @@ def run(kernel_code: str, mock: bool = False, max_rounds: int = 5, llm_config: L
         bottleneck_ir=analysis.bottleneck_ir,
     )
 
-    successful = [h for h in optimization.history if h.success]
-    print(f"\n  Strategies tried     : {len(optimization.history)}")
+    successful = [h for h in optimization.history if h.success and not h.strategy.startswith("[E2E]")]
+    e2e_history = [h for h in optimization.history if h.strategy.startswith("[E2E]")]
+    print(f"\n  Strategies tried     : {len(optimization.history) - len(e2e_history)}")
     print(f"  Strategies succeeded : {len(successful)}")
+    if e2e_history:
+        e2e = e2e_history[0]
+        e2e_speedup = (profile.baseline_time_ms - e2e.exec_time_ms) / profile.baseline_time_ms * 100
+        print(f"  E2E pass             : {e2e.exec_time_ms:.2f} ms  ({e2e_speedup:+.1f}% vs baseline)")
     print(f"  Total speedup        : {optimization.speedup * 100:.1f}%")
 
     # ── 生成报告 ──────────────────────────────────────────────

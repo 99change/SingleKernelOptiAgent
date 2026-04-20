@@ -20,7 +20,7 @@ BOTTLENECK_STRATEGIES = {
     "low_occupancy":           "Tune block size and reduce register/shared memory usage to raise occupancy",
     "high_register_pressure":  "Reduce register usage via variable reuse or __launch_bounds__ directive",
     "warp_divergence":         "Eliminate branch divergence within warps by restructuring conditionals",
-    "compute_underutilized":   "Increase arithmetic intensity by fusing operations or using tensor cores",
+    "compute_underutilized":   "Increase arithmetic intensity by loop unrolling (#pragma unroll), ILP (each thread handles multiple elements), or fusing adjacent element-wise operations into one kernel. Do NOT use tensor cores unless the kernel already performs matrix multiply.",
     "shared_memory_underused": "Tile global memory accesses through shared memory to exploit data reuse",
     "memory_latency_bound":    "Hide memory latency using __ldg() read-only cache, software pipelining with register double-buffering, or cuda::memcpy_async. Never use __builtin_prefetch (host-only). Increase ILP so warps can hide latency.",
 }

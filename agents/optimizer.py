@@ -116,6 +116,43 @@ class OptimizerAgent(BaseAgent):
             else:
                 self.logger.info(f"    ✗ Rejected (below threshold {self.min_improvement*100:.0f}%)")
 
+        # ── E2E pass：无约束让 LLM 自由优化，与策略结果竞争 ──────
+        self.logger.info("  [E2E] Trying: end-to-end unconstrained optimization")
+        e2e_code = self._generate_e2e_code(kernel_code)
+        if e2e_code:
+            try:
+                e2e_result = mock_profile(e2e_code) if self.mock_mode else compile_and_test(e2e_code)
+            except Exception as e:
+                e2e_result = None
+                self.logger.warning(f"    E2E test failed: {e}")
+
+            if e2e_result and e2e_result.success:
+                e2e_time = e2e_result.exec_time_ms
+                if baseline_time_ms > 0 and e2e_time <= baseline_time_ms * 10:
+                    e2e_improvement = (best_time - e2e_time) / best_time if best_time > 0 else 0.0
+                    e2e_vs_baseline = (baseline_time_ms - e2e_time) / baseline_time_ms * 100
+                    self.logger.info(f"    Time: {e2e_time:.2f} ms  vs baseline: {e2e_vs_baseline:+.1f}%")
+                    history.append(OptimizationHistory(
+                        strategy="[E2E] unconstrained",
+                        speedup=e2e_improvement,
+                        exec_time_ms=e2e_time,
+                        code=e2e_code,
+                        success=True,
+                    ))
+                    if e2e_time < best_time:
+                        best_code = e2e_code
+                        best_time = e2e_time
+                        self.logger.info("    ✓ E2E result is best so far")
+                    else:
+                        self.logger.info("    ~ E2E result not better than strategy pass")
+                else:
+                    self.logger.warning("    ✗ E2E anomalous slowdown, skipped")
+            else:
+                err = e2e_result.error[:80] if e2e_result else "unknown"
+                self.logger.warning(f"    E2E compile/run failed: {err}")
+        else:
+            self.logger.warning("    E2E LLM returned empty code")
+
         # 计算相对于原始 baseline 的总加速比
         if baseline_time_ms > 0:
             total_speedup = (baseline_time_ms - best_time) / baseline_time_ms
@@ -189,13 +226,14 @@ You are a CUDA expert. Apply the following optimization to the CUDA kernel below
 ## Optimization Goal:
 {strategy}
 
-{ir_section}{knowledge_section}## Original Kernel:
+{ir_section}{knowledge_section}## Current Kernel (may already contain prior optimizations — preserve them):
 ```cuda
 {kernel_code}
 ```
 
 ## Requirements:
-- Apply ONLY the specified optimization strategy
+- Apply ONLY the specified optimization strategy ON TOP of any existing optimizations already present in the kernel above
+- Do NOT remove or undo any optimizations already in the code (e.g. shared memory tiling, loop unrolling)
 - Keep the kernel semantically correct (same output for same input)
 - Return ONLY the complete optimized .cu source code, no explanation
 - The code must be compilable with nvcc
@@ -214,4 +252,25 @@ Return just the raw code, no markdown fences.
                 inner = inner[:-1]
             result = "\n".join(inner)
 
+        return result.strip()
+
+    def _generate_e2e_code(self, kernel_code: str) -> str:
+        """无约束端到端优化：不注入策略/知识库，让 LLM 自由发挥。"""
+        prompt = f"""You are a CUDA optimization expert. Rewrite the following CUDA kernel to be as fast as possible on a modern NVIDIA GPU (sm_120).
+
+Rules:
+- Output ONLY the complete, compilable CUDA C++ source file. No markdown, no explanation.
+- Keep the same function signature and behavior (same output for same input).
+- Use any optimization you judge appropriate.
+
+Original kernel:
+{kernel_code}
+"""
+        result = self._think(prompt, expect_json=False)
+        if result.startswith("```"):
+            lines = result.splitlines()
+            inner = lines[1:]
+            if inner and inner[-1].strip() == "```":
+                inner = inner[:-1]
+            result = "\n".join(inner)
         return result.strip()
