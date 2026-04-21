@@ -2,6 +2,7 @@
 
 自动优化 CUDA kernel 的 3-Agent 系统。输入 naive kernel，输出带注释的优化版本。
 
+> 目前只是一个单kernel优化的agent，问题在于这个想法已经严重过时，简单的单算子优化方式被kernel fusion的能力覆盖
 ---
 
 ## 项目结构
@@ -104,7 +105,7 @@ python main.py --input your_kernel.cu --model qwen-max --rounds 5
 
 # 待完成
 
-## Test-Time Scaling（TTS）
+## Test-Time Scaling
 
 > 核心洞察：训练时模型固定，但推理时投入更多计算量可持续提升效果。
 > 本项目天然适合 TTS——`nvcc` 编译 + GPU 实测 speedup 本身就是完美的 Verifier，无需训练 Reward Model。
@@ -128,9 +129,3 @@ python main.py --input your_kernel.cu --model qwen-max --rounds 5
 * 训练 classifier（替代 LLM）
 
 ---
-
-## Phase 3（真正研究点）
-
-* bottleneck → optimization policy
-* 或：
-* bottleneck → search space reduction
