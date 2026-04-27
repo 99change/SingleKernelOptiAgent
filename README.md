@@ -45,7 +45,7 @@ Input Kernel Code
   → BottleneckIR { non_coalesced_memory: {score, evidence}, ... }
   → strategies（按 score 排序）
         ↓
-  [ProfilerAgent]
+  [ProfilerAgent]  ← 纯工具流，无 LLM
   - 编译 + GPU 实测
   → baseline_time_ms
         ↓
@@ -115,13 +115,10 @@ python main.py --input your_kernel.cu --model qwen-max --rounds 5
 - 集成 `ncu`（Nsight Compute CLI）获取**memory throughput、occupancy、warp efficiency、arithmetic intensity**
 - 这些数值是 LLM 读代码无法推断的，才是静态工具对 BottleneckIR 的真实贡献
 
-### 2. Profiler：去除 LLM 调用，改为纯工具流
-当前 `ProfilerAgent` 在 `execute()` 末尾调用一次 LLM，仅凭执行时间数字生成一句瓶颈描述。这段描述信息量极低且与 Analyzer 的 BottleneckIR 重复，属于无效 token 消耗。
-
-**改造目标：**
-- `ProfilerAgent` 降级为纯函数（或保留 Agent 壳但不调用 `_think`）
-- `execute()` 直接返回 `ProfileResult`（含 `baseline_time_ms` + `metrics`），不生成 `bottleneck_description`
-- 瓶颈描述统一由 Analyzer 负责，职责边界清晰
+### ~~2. Profiler：去除 LLM 调用，改为纯工具流~~ ✅ 已完成
+`ProfilerAgent` 已从 `BaseAgent` 中独立，不再继承 LLM 基类，不再调用 `_think`。
+`execute()` 直接返回 `ProfileResult`（含 `baseline_time_ms` + `metrics`）。
+`bottleneck_description` 字段保留但为空字符串，仅用于向后兼容；瓶颈分析统一由 AnalyzerAgent 的 BottleneckIR 负责。
 
 ### 3. Optimizer：添加 Chain-of-Thought 规划步骤
 当前 `_generate_optimized_code` 让 LLM 一步直接输出代码，策略意图和代码实现混在一个 prompt 里，容易导致幻觉或策略未实际落地。

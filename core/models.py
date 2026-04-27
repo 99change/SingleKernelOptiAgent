@@ -56,8 +56,8 @@ class KernelMetrics:
 class ProfileResult:
     """性能测评结果"""
     metrics: KernelMetrics
-    bottleneck_description: str
     baseline_time_ms: float
+    bottleneck_description: str = ""  # 已废弃，保留仅用于兼容；瓶颈分析由 AnalyzerAgent 负责
 
 
 @dataclass

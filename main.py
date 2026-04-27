@@ -86,11 +86,10 @@ def run(kernel_code: str, mock: bool = False, max_rounds: int = 5, llm_config: L
     print("  Phase 2/3 : Profiling Baseline")
     print(separator)
 
-    profiler = ProfilerAgent(llm_config=llm_config, mock_mode=mock)
+    profiler = ProfilerAgent(mock_mode=mock)
     profile = profiler.execute(kernel_code)
 
     print(f"  Baseline time        : {profile.baseline_time_ms:.2f} ms")
-    print(f"  Bottleneck           : {profile.bottleneck_description}")
 
     # ── Phase 3: 优化 ─────────────────────────────────────────
     print(f"\n{separator}")
